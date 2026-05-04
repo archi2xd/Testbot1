@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Relax Сеть</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0a0a0f;
+  --surface:#111118;
+  --surface2:#18181f;
+  --accent:#ff2d78;
+  --accent2:#ff6baa;
+  --glow:rgba(255,45,120,0.35);
+  --glow2:rgba(255,45,120,0.12);
+  --text:#f5e6ee;
+  --muted:#887080;
+  --border:rgba(255,45,120,0.15);
+  --card:#13111a;
+}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;padding-bottom:40px}
+
+.header{background:var(--bg);padding:16px 16px 0;position:sticky;top:0;z-index:20;border-bottom:1px solid var(--border)}
+.header-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.app-name{font-size:20px;font-weight:800;letter-spacing:-0.5px}
+.app-name span{color:var(--accent);text-shadow:0 0 12px var(--glow)}
+.app-sub{font-size:10px;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase;margin-top:2px}
+
+.tabs{display:flex;background:var(--surface2);border-radius:10px;padding:3px;margin-bottom:14px;border:1px solid var(--border)}
+.tab{flex:1;text-align:center;padding:7px 0;border-radius:8px;font-size:13px;font-weight:600;color:var(--muted);cursor:pointer;transition:all .2s;position:relative}
+.tab.active{background:var(--accent);color:#fff;box-shadow:0 0 14px var(--glow)}
+.tab .badge{position:absolute;top:-4px;right:8px;background:#ff2d78;color:#fff;font-size:10px;font-weight:700;padding:1px 5px;border-radius:20px}
+
+.search-row{display:flex;gap:8px;padding:0 0 12px}
+.search-box{flex:1;position:relative}
+.search-box input{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:9px 12px 9px 36px;color:var(--text);font-size:14px;outline:none;transition:border-color .2s}
+.search-box input:focus{border-color:rgba(255,45,120,0.5);box-shadow:0 0 10px var(--glow2)}
+.search-box input::placeholder{color:var(--muted)}
+.search-icon{position:absolute;left:11px;top:50%;transform:translateY(-50%);font-size:15px}
+
+.filter-toggle-row{display:flex;align-items:center;gap:8px;padding:0 0 10px}
+.filter-toggle-btn{display:flex;align-items:center;gap:6px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:7px 14px;font-size:13px;font-weight:600;color:var(--text);cursor:pointer;transition:border-color .2s}
+.filter-toggle-btn.has-active{border-color:var(--accent);color:var(--accent);box-shadow:0 0 8px var(--glow2)}
+.active-filters-badge{font-size:12px;color:var(--accent);display:none}
+
+.filter-panel{background:var(--surface2);border:1px solid var(--border);border-radius:14px;padding:14px;margin-bottom:10px;display:none}
+.filter-panel.open{display:block}
+.filter-section-title{font-size:11px;font-weight:700;color:var(--accent2);text-transform:uppercase;letter-spacing:.8px;margin-bottom:10px}
+.filter-chips{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:14px}
+.filter-chip{padding:5px 12px;border-radius:20px;border:1px solid var(--border);background:transparent;color:var(--muted);font-size:12px;font-weight:600;cursor:pointer;transition:all .2s}
+.filter-chip.active{background:var(--accent);border-color:var(--accent);color:#fff;box-shadow:0 0 10px var(--glow)}
+
+.online-toggle-row{display:flex;align-items:center;gap:10px;padding:10px 0;border-top:1px solid var(--border)}
+.online-toggle-label{flex:1}
+.online-toggle-label span{font-size:13px;color:var(--text);display:block}
+.online-toggle-label small{font-size:11px;color:var(--muted)}
+.switch{position:relative;width:44px;height:24px;flex-shrink:0}
+.switch input{opacity:0;width:0;height:0}
+.slider{position:absolute;cursor:pointer;inset:0;background:rgba(255,255,255,0.1);border-radius:24px;transition:.3s}
+.slider:before{content:"";position:absolute;height:18px;width:18px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:.3s}
+.switch input:checked + .slider{background:var(--accent);box-shadow:0 0 10px var(--glow)}
+.switch input:checked + .slider:before{transform:translateX(20px)}
+.filter-reset{width:100%;margin-top:12px;padding:8px;background:transparent;border:1px solid var(--border);border-radius:10px;color:var(--muted);font-size:13px;cursor:pointer;transition:all .2s}
+.filter-reset:hover{border-color:var(--accent);color:var(--accent)}
+
+.categories{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;padding-bottom:12px}
+.categories::-webkit-scrollbar{display:none}
+.chip{flex-shrink:0;padding:5px 14px;border-radius:20px;border:1px solid var(--border);background:transparent;color:var(--muted);font-size:12px;font-weight:600;cursor:pointer;transition:all .2s;text-transform:uppercase;letter-spacing:.5px}
+.chip.active{background:var(--accent);border-color:var(--accent);color:#fff;box-shadow:0 0 12px var(--glow)}
+
+.count{padding:0 16px 10px;font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
+.cards{padding:0 16px;display:flex;flex-direction:column;gap:16px}
+
+.card{background:var(--card);border:1px solid var(--border);border-radius:20px;overflow:hidden;transition:border-color .2s}
+.card:hover{border-color:rgba(255,45,120,0.4)}
+
+.gallery{position:relative;height:240px;background:#1a111a;overflow:hidden}
+.gallery-main{width:100%;height:100%;object-fit:cover;display:block;cursor:pointer}
+.gallery-main-emoji{width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:60px;background:linear-gradient(135deg,#1a111a,#200d1a);cursor:pointer}
+.gallery-nav{position:absolute;top:50%;transform:translateY(-50%);background:rgba(0,0,0,0.5);border:none;border-radius:50%;width:32px;height:32px;color:#fff;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px);z-index:3}
+.gallery-nav.prev{left:10px}
+.gallery-nav.next{right:10px}
+.gallery-dots{position:absolute;bottom:42px;left:50%;transform:translateX(-50%);display:flex;gap:5px;z-index:3}
+.dot{width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,0.35);cursor:pointer;transition:all .2s}
+.dot.active{background:#fff;width:18px;border-radius:3px}
+.gallery-thumbs{position:absolute;bottom:8px;left:50%;transform:translateX(-50%);display:flex;gap:5px;z-index:3}
+.thumb{width:38px;height:38px;border-radius:7px;overflow:hidden;border:2px solid rgba(255,255,255,0.2);cursor:pointer;transition:border-color .2s;background:#1a111a;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+.thumb.active{border-color:var(--accent);box-shadow:0 0 8px var(--glow)}
+.thumb img{width:100%;height:100%;object-fit:cover}
+
+.new-badge{position:absolute;top:10px;left:10px;background:var(--accent);color:#fff;font-size:10px;font-weight:800;padding:3px 9px;border-radius:6px;text-transform:uppercase;box-shadow:0 0 10px var(--glow);z-index:4}
+.online-badge{position:absolute;top:10px;left:10px;background:#1db954;color:#fff;font-size:10px;font-weight:800;padding:3px 9px;border-radius:6px;text-transform:uppercase;z-index:4;display:flex;align-items:center;gap:4px}
+.online-dot-anim{width:6px;height:6px;border-radius:50%;background:#fff;animation:pulse 1.5s infinite;flex-shrink:0}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+.fav-btn{position:absolute;top:10px;right:10px;background:rgba(0,0,0,0.55);border:none;border-radius:8px;padding:5px 7px;cursor:pointer;font-size:15px;backdrop-filter:blur(4px);transition:transform .15s;z-index:4}
+.fav-btn:active{transform:scale(1.3)}
+
+.card-body{padding:14px 14px 0}
+.card-head{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:8px}
+.trainer-name{font-size:19px;font-weight:800;letter-spacing:-0.3px}
+.trainer-spec{font-size:11px;color:var(--accent2);font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-top:2px}
+.price-tag{background:var(--accent);color:#fff;font-size:13px;font-weight:800;padding:5px 11px;border-radius:10px;white-space:nowrap;box-shadow:0 0 14px var(--glow);flex-shrink:0}
+.meta-row{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:10px}
+.meta-item{display:flex;align-items:center;gap:4px;font-size:12px;color:var(--muted)}
+.meta-item strong{color:var(--text);font-weight:600}
+.work-hours{display:flex;align-items:center;gap:6px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:7px 10px;margin-bottom:12px;font-size:12px}
+.work-hours-value{color:var(--text);font-weight:700}
+.desc{font-size:13px;color:#aa8898;line-height:1.55;margin-bottom:12px}
+.tags{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px}
+.tag{padding:4px 10px;border-radius:7px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.3px;background:rgba(255,45,120,0.1);color:var(--accent2);border:1px solid rgba(255,45,120,0.25)}
+.card-footer{border-top:1px solid var(--border);padding:12px 14px}
+.contact-btn{width:100%;background:linear-gradient(135deg,var(--accent),#c4005e);border:none;border-radius:12px;padding:13px;color:#fff;font-size:15px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;transition:opacity .2s;text-decoration:none;box-shadow:0 4px 20px var(--glow)}
+.contact-btn:hover{opacity:.9}
+.tg-icon{width:18px;height:18px;fill:#fff}
+
+.lightbox{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.96);z-index:1000;align-items:center;justify-content:center}
+.lightbox.open{display:flex}
+.lightbox-inner{display:flex;align-items:center;justify-content:center;width:100%;height:100%}
+.lb-img{max-width:96vw;max-height:85vh;object-fit:contain;border-radius:12px}
+.lb-emoji{font-size:120px;display:flex;align-items:center;justify-content:center}
+.lb-close{position:absolute;top:18px;right:18px;background:rgba(255,255,255,0.1);border:none;color:#fff;font-size:22px;width:40px;height:40px;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.lb-nav{position:absolute;top:50%;transform:translateY(-50%);background:rgba(255,255,255,0.1);border:none;color:#fff;font-size:26px;width:44px;height:44px;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.lb-prev{left:12px}
+.lb-next{right:12px}
+.lb-counter{position:absolute;bottom:20px;left:50%;transform:translateX(-50%);color:rgba(255,255,255,0.5);font-size:13px}
+
+.empty{text-align:center;padding:50px 20px;color:var(--muted)}
+.empty-icon{font-size:44px;margin-bottom:12px}
+.neon-line{height:1px;background:linear-gradient(90deg,transparent,var(--accent),transparent);opacity:.4;margin:0 16px 4px}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-top">
+    <div>
+      <div class="app-name">Relax <span>Сеть</span></div>
+      <div class="app-sub">Найди своего специалиста</div>
+    </div>
+    <span style="font-size:26px">🌸</span>
+  </div>
+  <div class="tabs">
+    <div class="tab active" onclick="switchTab(0)">Каталог</div>
+    <div class="tab" onclick="switchTab(1)">Избранное <span class="badge" id="fav-count" style="display:none">0</span></div>
+  </div>
+  <div class="search-row">
+    <div class="search-box">
+      <span class="search-icon">🔍</span>
+      <input type="text" id="search" placeholder="Поиск специалиста...">
+    </div>
+  </div>
+
+  <div class="filter-toggle-row">
+    <button class="filter-toggle-btn" id="filter-btn" onclick="toggleFilters()">⚙️ Фильтры <span id="filter-arrow">▼</span></button>
+    <span class="active-filters-badge" id="active-filters-badge"></span>
+  </div>
+
+  <div class="filter-panel" id="filter-panel">
+    <div class="filter-section-title">Метро</div>
+    <div class="filter-chips" id="metro-chips"></div>
+    <div class="online-toggle-row">
+      <div class="online-toggle-label">
+        <span>Работает сейчас</span>
+        <small>Показать только тех, кто онлайн</small>
+      </div>
+      <label class="switch">
+        <input type="checkbox" id="online-toggle" onchange="applyFilters()">
+        <span class="slider"></span>
+      </label>
+    </div>
+    <button class="filter-reset" onclick="resetFilters()">Сбросить фильтры</button>
+  </div>
+
+  <div class="categories" id="categories"></div>
+</div>
+
+<div class="neon-line"></div>
+<div class="count" id="count"></div>
+<div class="cards" id="cards"></div>
+
+<div class="lightbox" id="lightbox">
+  <button class="lb-close" onclick="closeLb()">✕</button>
+  <button class="lb-nav lb-prev" onclick="lbMove(-1)">‹</button>
+  <div class="lightbox-inner" id="lb-content"></div>
+  <button class="lb-nav lb-next" onclick="lbMove(1)">›</button>
+  <div class="lb-counter" id="lb-counter"></div>
+</div>
+
+<script>
+// ================================================================
+//  📋 ДАННЫЕ СПЕЦИАЛИСТОВ — редактируй здесь
+// ================================================================
+const trainers = [
+  {
+    id: 1,
+    name: "Максим Орлов",
+    spec: "Силовой тренинг",
+    category: "Сила",
+    isNew: true,
+    isOnline: true,           // true = зелёный бейдж "Онлайн"
+    price: "3 500 ₽/ч",
+    age: 29,
+    exp: "6 лет",
+    location: "м. Спортивная",
+    workHours: "10:00 — 21:00",
+    desc: "Специализируюсь на наборе мышечной массы и силовых показателях. Составлю программу под твои цели — от новичка до соревновательного уровня.",
+    tags: ["Пауэрлифтинг", "Масса", "Реабилитация"],
+    tg: "maxim_trainer",
+    // Фото: до 3 штук. Замени emoji на путь: "photos/maxim1.jpg"
+    photos: ["💪", "🏋️", "🏅"],
+  },
+  {
+    id: 2,
+    name: "Алина Смирнова",
+    spec: "Йога & растяжка",
+    category: "Йога",
+    isNew: false,
+    isOnline: false,
+    price: "2 800 ₽/ч",
+    age: 27,
+    exp: "4 года",
+    location: "м. Арбатская",
+    workHours: "08:00 — 20:00",
+    desc: "Индивидуальные занятия йогой и стретчингом. Помогу восстановиться после травм, избавиться от зажимов и стресса. Работаю онлайн и офлайн.",
+    tags: ["Йога", "Стретчинг", "Онлайн"],
+    tg: "alina_yoga",
+    photos: ["🧘", "🌿", "🕯️"],
+  },
+  {
+    id: 3,
+    name: "Денис Ковалёв",
+    spec: "Кроссфит & кардио",
+    category: "Кардио",
+    isNew: true,
+    isOnline: true,
+    price: "3 000 ₽/ч",
+    age: 31,
+    exp: "8 лет",
+    location: "м. Парк Победы",
+    workHours: "06:00 — 22:00",
+    desc: "Интенсивные тренировки для сжигания жира и повышения выносливости. Мастер спорта по лёгкой атлетике. Работаю с группами до 4 человек.",
+    tags: ["Кроссфит", "Похудение", "Выносливость"],
+    tg: "denis_fit",
+    photos: ["🏃", "⚡", "🏆"],
+  },
+  {
+    id: 4,
+    name: "Виктория Лебедь",
+    spec: "Пилатес & TRX",
+    category: "Пилатес",
+    isNew: false,
+    isOnline: false,
+    price: "3 200 ₽/ч",
+    age: 26,
+    exp: "5 лет",
+    location: "м. Маяковская",
+    workHours: "09:00 — 19:00",
+    desc: "Тренировки на основе пилатеса и функционального тренинга. Идеально для коррекции осанки, работы с болями в спине и восстановления после родов.",
+    tags: ["Пилатес", "TRX", "Осанка"],
+    tg: "vika_pilates",
+    photos: ["🤸", "✨", "💎"],
+  },
+];
+
+// ================================================================
+const categories = ["Все", ...new Set(trainers.map(t => t.category))];
+const metros = [...new Set(trainers.map(t => t.location))];
+let activeCategory = "Все", activeMetros = new Set(), onlineOnly = false;
+let searchQuery = "", favorites = new Set(), showFavorites = false, filtersOpen = false;
+let galleryIdx = {}, lbPhotos = [], lbIdx = 0;
+
+function switchTab(i) {
+  document.querySelectorAll('.tab').forEach((t, idx) => t.classList.toggle('active', idx === i));
+  showFavorites = i === 1; renderCards();
+}
+function toggleFilters() {
+  filtersOpen = !filtersOpen;
+  document.getElementById('filter-panel').classList.toggle('open', filtersOpen);
+  document.getElementById('filter-arrow').textContent = filtersOpen ? '▲' : '▼';
+}
+function applyFilters() {
+  onlineOnly = document.getElementById('online-toggle').checked;
+  updateBadge(); renderCards();
+}
+function resetFilters() {
+  activeMetros.clear(); onlineOnly = false;
+  document.getElementById('online-toggle').checked = false;
+  renderMetroChips(); updateBadge(); renderCards();
+}
+function updateBadge() {
+  const n = activeMetros.size + (onlineOnly ? 1 : 0);
+  const b = document.getElementById('active-filters-badge');
+  const btn = document.getElementById('filter-btn');
+  b.style.display = n ? 'inline' : 'none';
+  b.textContent = n ? `${n} активных` : '';
+  btn.classList.toggle('has-active', n > 0);
+}
+function renderMetroChips() {
+  document.getElementById('metro-chips').innerHTML = metros.map(m =>
+    `<button class="filter-chip ${activeMetros.has(m)?'active':''}" onclick="toggleMetro('${m}',this)">${m}</button>`
+  ).join('');
+}
+function toggleMetro(m, btn) {
+  activeMetros.has(m) ? activeMetros.delete(m) : activeMetros.add(m);
+  btn.classList.toggle('active', activeMetros.has(m));
+  updateBadge(); renderCards();
+}
+function renderCategories() {
+  document.getElementById('categories').innerHTML = categories.map(c =>
+    `<button class="chip ${c===activeCategory?'active':''}" onclick="setCategory('${c}')">${c}</button>`
+  ).join('');
+}
+function setCategory(cat) { activeCategory = cat; renderCategories(); renderCards(); }
+function toggleFav(id, btn) {
+  favorites.has(id) ? favorites.delete(id) : favorites.add(id);
+  btn.textContent = favorites.has(id) ? '🩷' : '🤍';
+  const el = document.getElementById('fav-count');
+  el.style.display = favorites.size ? 'inline' : 'none';
+  el.textContent = favorites.size;
+  if (showFavorites) renderCards();
+}
+function isFile(s) { return s && s.includes('.'); }
+
+function buildGallery(t) {
+  const photos = (t.photos || []).slice(0, 3);
+  if (!photos.length) photos.push('📷');
+  const cur = galleryIdx[t.id] || 0;
+  const src = photos[cur];
+  const mainHtml = isFile(src)
+    ? `<img class="gallery-main" src="${src}" onclick="openLb(${t.id},${cur})" alt="">`
+    : `<div class="gallery-main-emoji" onclick="openLb(${t.id},${cur})">${src}</div>`;
+  const badge = t.isOnline
+    ? `<div class="online-badge"><span class="online-dot-anim"></span>Онлайн</div>`
+    : (t.isNew ? `<div class="new-badge">NEW</div>` : '');
+  const dots = photos.length > 1
+    ? `<div class="gallery-dots">${photos.map((_,i)=>`<div class="dot${i===cur?' active':''}" onclick="setPhoto(${t.id},${i})"></div>`).join('')}</div>` : '';
+  const thumbs = photos.length > 1
+    ? `<div class="gallery-thumbs">${photos.map((p,i)=>`<div class="thumb${i===cur?' active':''}" onclick="setPhoto(${t.id},${i})">${isFile(p)?`<img src="${p}" alt="">`:`<span>${p}</span>`}</div>`).join('')}</div>` : '';
+  const nav = photos.length > 1
+    ? `<button class="gallery-nav prev" onclick="movePhoto(event,${t.id},-1)">‹</button><button class="gallery-nav next" onclick="movePhoto(event,${t.id},1)">›</button>` : '';
+  return `<div class="gallery" id="g-${t.id}">${mainHtml}${badge}<button class="fav-btn" onclick="toggleFav(${t.id},this)">${favorites.has(t.id)?'🩷':'🤍'}</button>${nav}${dots}${thumbs}</div>`;
+}
+
+function setPhoto(tid, idx) {
+  const t = trainers.find(x => x.id === tid);
+  const photos = (t.photos || []).slice(0, 3);
+  galleryIdx[tid] = idx;
+  const g = document.getElementById('g-' + tid);
+  const src = photos[idx];
+  const wrap = g.querySelector('.gallery-main, .gallery-main-emoji');
+  if (isFile(src)) {
+    if (wrap.tagName === 'IMG') { wrap.src = src; }
+    else { const img = document.createElement('img'); img.className = 'gallery-main'; img.src = src; img.onclick = () => openLb(tid, idx); g.replaceChild(img, wrap); }
+  } else {
+    if (wrap.classList.contains('gallery-main-emoji')) { wrap.textContent = src; wrap.onclick = () => openLb(tid, idx); }
+    else { const div = document.createElement('div'); div.className = 'gallery-main-emoji'; div.textContent = src; div.onclick = () => openLb(tid, idx); g.replaceChild(div, wrap); }
+  }
+  g.querySelectorAll('.dot').forEach((d, i) => d.classList.toggle('active', i === idx));
+  g.querySelectorAll('.thumb').forEach((th, i) => th.classList.toggle('active', i === idx));
+}
+
+function movePhoto(e, tid, dir) {
+  e.stopPropagation();
+  const t = trainers.find(x => x.id === tid);
+  const photos = (t.photos || []).slice(0, 3);
+  const cur = galleryIdx[tid] || 0;
+  setPhoto(tid, (cur + dir + photos.length) % photos.length);
+}
+
+function openLb(tid, idx) {
+  const t = trainers.find(x => x.id === tid);
+  lbPhotos = (t.photos || []).slice(0, 3);
+  lbIdx = idx;
+  renderLb();
+  document.getElementById('lightbox').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+function closeLb() {
+  document.getElementById('lightbox').classList.remove('open');
+  document.body.style.overflow = '';
+}
+function lbMove(d) {
+  lbIdx = (lbIdx + d + lbPhotos.length) % lbPhotos.length;
+  renderLb();
+}
+function renderLb() {
+  const src = lbPhotos[lbIdx];
+  const c = document.getElementById('lb-content');
+  c.innerHTML = isFile(src)
+    ? `<img class="lb-img" src="${src}" alt="">`
+    : `<div class="lb-emoji">${src}</div>`;
+  document.getElementById('lb-counter').textContent = lbPhotos.length > 1 ? `${lbIdx+1} / ${lbPhotos.length}` : '';
+  document.querySelector('.lb-prev').style.display = lbPhotos.length > 1 ? 'flex' : 'none';
+  document.querySelector('.lb-next').style.display = lbPhotos.length > 1 ? 'flex' : 'none';
+}
+let touchX = null;
+document.getElementById('lightbox').addEventListener('touchstart', e => { touchX = e.touches[0].clientX; });
+document.getElementById('lightbox').addEventListener('touchend', e => {
+  if (touchX === null) return;
+  const dx = e.changedTouches[0].clientX - touchX;
+  if (Math.abs(dx) > 40) lbMove(dx < 0 ? 1 : -1);
+  touchX = null;
+});
+
+function renderCards() {
+  const q = searchQuery.toLowerCase();
+  let list = showFavorites ? trainers.filter(t => favorites.has(t.id)) : [...trainers];
+  list = list.filter(t => {
+    return (activeCategory === "Все" || t.category === activeCategory)
+      && (!q || t.name.toLowerCase().includes(q) || t.spec.toLowerCase().includes(q) || t.tags.some(g => g.toLowerCase().includes(q)))
+      && (activeMetros.size === 0 || activeMetros.has(t.location))
+      && (!onlineOnly || t.isOnline);
+  });
+  document.getElementById('count').textContent = `${list.length} специалист${list.length===1?'':list.length<5?'а':'ов'} найдено`;
+  if (!list.length) {
+    document.getElementById('cards').innerHTML = `<div class="empty"><div class="empty-icon">${showFavorites?'💔':'🔍'}</div><div>${showFavorites?'Нет избранных':'Ничего не найдено'}</div></div>`;
+    return;
+  }
+  document.getElementById('cards').innerHTML = list.map(t => `
+    <div class="card">
+      ${buildGallery(t)}
+      <div class="card-body">
+        <div class="card-head">
+          <div><div class="trainer-name">${t.name}</div><div class="trainer-spec">${t.spec}</div></div>
+          <div class="price-tag">${t.price}</div>
+        </div>
+        <div class="meta-row">
+          <div class="meta-item">📍 ${t.location}</div>
+          <div class="meta-item">⏱ Опыт: <strong>${t.exp}</strong></div>
+          <div class="meta-item">🎂 <strong>${t.age} лет</strong></div>
+        </div>
+        <div class="work-hours">🕐 <span style="color:var(--muted);margin-right:4px">На связи:</span><span class="work-hours-value">${t.workHours}</span></div>
+        <div class="desc">${t.desc}</div>
+        <div class="tags">${t.tags.map(tag=>`<span class="tag">${tag}</span>`).join('')}</div>
+      </div>
+      <div class="card-footer">
+        <a href="https://t.me/${t.tg}" class="contact-btn" onclick="handleTg(event,'${t.tg}')">
+          <svg class="tg-icon" viewBox="0 0 24 24"><path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.562 8.248l-1.97 9.28c-.145.658-.537.818-1.084.508l-3-2.21-1.447 1.394c-.16.16-.295.295-.605.295l.213-3.053 5.56-5.023c.242-.213-.054-.333-.373-.12l-6.871 4.326-2.962-.924c-.643-.204-.657-.643.136-.953l11.57-4.461c.537-.194 1.006.131.833.941z"/></svg>
+          Связаться
+        </a>
+      </div>
+    </div>
+  `).join('');
+}
+
+function handleTg(e, u) {
+  e.preventDefault();
+  if (window.Telegram && Telegram.WebApp) Telegram.WebApp.openTelegramLink(`https://t.me/${u}`);
+  else window.open(`https://t.me/${u}`, '_blank');
+}
+
+document.getElementById('search').addEventListener('input', e => { searchQuery = e.target.value; renderCards(); });
+if (window.Telegram && Telegram.WebApp) { Telegram.WebApp.ready(); Telegram.WebApp.expand(); }
+
+renderMetroChips();
+renderCategories();
+renderCards();
+</script>
+</body>
+</html>
